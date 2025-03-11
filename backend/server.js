@@ -26,9 +26,11 @@ io.on('connection', (socket) => {
 
   // Send bot status updates every 10 seconds
   setInterval(() => {
-    const botStatuses = Object.keys(bots).map(serverId => ({
+    // Ensure bots is defined; if not, fallback to an empty object
+    const currentBots = bots || {};
+    const botStatuses = Object.keys(currentBots).map(serverId => ({
       serverId,
-      status: bots[serverId] ? 'Online' : 'Offline'
+      status: currentBots[serverId] ? 'Online' : 'Offline'
     }));
     socket.emit('botStatusUpdate', botStatuses);
   }, 10000);
@@ -106,7 +108,9 @@ passport.deserializeUser(async (id, done) => {
   try { 
     const user = await User.findById(id);
     done(null, user);
-  } catch (err) { done(err); }
+  } catch (err) {
+    done(err);
+  }
 });
 
 // Routes
