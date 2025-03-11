@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http'); // Required for WebSockets
+const { Server } = require('socket.io'); // WebSockets
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const passport = require('passport');
@@ -8,10 +10,29 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const { bots } = require('./botManager');
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: process.env.FRONTEND_URL, credentials: true }
+});
+
+// WebSocket connection for real-time bot status
+io.on('connection', (socket) => {
+  console.log('New WebSocket client connected');
+
+  // Send bot status updates every 10 seconds
+  setInterval(() => {
+    const botStatuses = Object.keys(bots).map(serverId => ({
+      serverId,
+      status: bots[serverId] ? 'Online' : 'Offline'
+    }));
+    socket.emit('botStatusUpdate', botStatuses);
+  }, 10000);
+});
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -37,10 +58,12 @@ app.use(session({
 // Passport setup
 app.use(passport.initialize());
 app.use(passport.session());
+
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('./models/User');
 
+// Local Login Strategy
 passport.use(new LocalStrategy({ usernameField: 'email' },
   async (email, password, done) => {
     try {
@@ -55,6 +78,7 @@ passport.use(new LocalStrategy({ usernameField: 'email' },
   }
 ));
 
+// Google OAuth Strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -92,4 +116,4 @@ app.use('/api/forum', require('./routes/forum'));
 app.use('/api/help', require('./routes/help'));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
