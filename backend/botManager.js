@@ -4,24 +4,21 @@ const { v4: uuidv4 } = require('uuid');
 
 const bots = {}; // Store bot instances in memory
 
-// Create and register a new bot instance
-function createBot(options) {
+async function createBot(options) {
   return new Promise((resolve, reject) => {
     const serverId = uuidv4().replace(/-/g, '').substring(0, 16).toUpperCase();
     const serverKey = uuidv4().replace(/-/g, '').substring(0, 16).toUpperCase();
+    
     const botOptions = {
       host: options.ip,
       port: options.port || 25565,
-      username: options.username || 'LostCloudBot_' + serverId
+      username: options.botName || `LostCloudBot_${serverId}` // <-- Use custom bot name
     };
 
     const bot = mineflayer.createBot(botOptions);
     bot.loadPlugin(pathfinder);
 
     bot.once('spawn', () => {
-      if (bot._client && bot._client.socket) {
-        bot._client.socket.setKeepAlive(true, 30000);
-      }
       bots[serverId] = bot;
       resolve({ serverId, serverKey });
     });
